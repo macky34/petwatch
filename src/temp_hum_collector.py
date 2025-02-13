@@ -50,12 +50,16 @@ def parse_data(data: bytes):
     }
     
 def control_heater(current_temp):
-    threshold = 25.0
+    default_threshold = 25.0
     try:
         with open(CONFIG_FILE, "r") as f:
-            threshold = json.load(f).get("threshold_temperature", 25.0)
+            config = json.load(f)
+            threshold = config.get("threshold_temperature", default_threshold)
     except FileNotFoundError:
-        pass
+        threshold = default_threshold
+        # ファイルが存在しない場合はデフォルト設定で生成
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({"threshold_temperature": threshold}, f, indent=4)
     
     if current_temp < threshold - 0.5:
         switchbot_api.turn_on()  # ON
@@ -87,7 +91,7 @@ async def scan_and_log():
             await asyncio.wait_for(found_event.wait(), timeout=SCAN_TIMEOUT)
         except asyncio.TimeoutError:
             # print("Timeout: No target devices found.")
-            logger.error("Timeout: No target devices found.", exc_info=True)
+            logger.error("Timeout: No target devices found.", exc_info=False)
         await scanner.stop()
         await asyncio.sleep(SCAN_INTERVAL)
 

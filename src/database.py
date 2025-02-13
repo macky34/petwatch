@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from datetime import datetime
 
 def init_db():
@@ -25,6 +26,8 @@ def init_db():
     conn.close()
 
 def log_data(mac_addr, temp, hum, batt):
+    if not os.path.exists('sensor_data.db'):
+        init_db()
     conn = sqlite3.connect('sensor_data.db')
     c = conn.cursor()
     ts = datetime.now().isoformat()
