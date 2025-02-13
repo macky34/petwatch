@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @keyframes gradient-wave {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 animate-gradient-wave">
+    <!-- ヘッダー -->
+    <header class="glass-effect p-6 fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+                    Environment Dashboard
+                </span>
+            </h1>
+            <div class="flex items-center space-x-4"></div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="pt-24 pb-12 px-4">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <!-- センサーデータカード -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Temperature Card -->
+                <div class="glass-effect p-6 rounded-2xl shadow-lg">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-3 bg-cyan-500/20 rounded-xl">
+                            <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M14 14.76V5a2 2 0 00-4 0v9.76a4 4 0 104 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-300">Temperature</p>
+                            <p class="text-2xl font-bold text-white">{{ latest_data.temperature|round(1) }}°C</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Humidity Card -->
+                <div class="glass-effect p-6 rounded-2xl shadow-lg">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-3 bg-purple-500/20 rounded-xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-purple-400" viewBox="0 0 24 20" fill="none"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 2C12 2 18 10 18 14a6 6 0 01-12 0c0-4 6-12 6-12z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-300">Humidity</p>
+                            <p class="text-2xl font-bold text-white">{{ latest_data.humidity|round(1) }}%</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Battery Card -->
+                <div class="glass-effect p-6 rounded-2xl shadow-lg">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-3 bg-green-500/20 rounded-xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-green-400" viewBox="0 0 24 20" fill="none">
+                                <!-- バッテリー本体（縦長の角丸長方形） -->
+                                <rect x="7" y="4" width="10" height="14" rx="2" ry="2" fill="rgba(16,185,129,0.2)" stroke="currentColor"
+                                    stroke-width="2" />
+                                <!-- バッテリー端子（上部の小さい長方形） -->
+                                <rect x="10" y="2" width="4" height="2" rx="1" ry="1" fill="rgba(16,185,129,0.2)" stroke="currentColor"
+                                    stroke-width="2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-300">Battery</p>
+                            <p class="text-2xl font-bold text-white">{{ latest_data.battery }}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="range" id="tempSlider" min="15" max="35" step="1" value="25">
+        <p>Current Threshold: <span id="currentValue"></span>°C</p>
+        <button onclick="updateThreshold()">Save</button>
+
+        <script>
+            // 初期値をサーバーから取得
+            fetch("/get_threshold")
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("tempSlider").value = data.threshold;
+                    document.getElementById("currentValue").textContent = data.threshold;
+                });
+
+            document.getElementById("tempSlider").addEventListener("input", function () {
+                document.getElementById("currentValue").textContent = this.value;
+            });
+
+            function updateThreshold() {
+                fetch("/set_threshold", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ threshold: document.getElementById("tempSlider").value })
+                });
+            }
+        </script>
+    </main>
+</body>
+
+</html>

@@ -1,3 +1,13 @@
+src/.env
+src/*db
+src/config.json
+src/*test*
+*db
+bin/
+include/
+lib64
+pyvenv.cfg
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
