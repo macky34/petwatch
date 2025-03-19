@@ -57,7 +57,7 @@
     <main class="pt-24 pb-12 px-4">
         <div class="max-w-7xl mx-auto space-y-8">
             <!-- センサーデータカード -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <!-- Temperature Card -->
                 <div class="glass-effect p-6 rounded-2xl shadow-lg">
                     <div class="flex items-center space-x-4">
@@ -108,6 +108,30 @@
                         </div>
                     </div>
                 </div>
+                <!-- Heater Status Card -->
+                <div class="glass-effect p-6 rounded-2xl shadow-lg">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-3 bg-red-500/20 rounded-xl">
+                            <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <!-- 下の横線 -->
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M4 18 L20 18" />
+                                
+                                <!-- 湯気/スチーム（波線） -->
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M8 14 C10 9, 8 6, 10 4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M12 14 C14 9, 12 6, 14 4" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M16 14 C18 9, 16 6, 18 4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-300">Heater Status</p>
+                            <p class="text-2xl font-bold text-white" id="heater-status">OFF</p>
+                        </div>
+                    </div>
+</div>
             </div>
             
             <!-- 温度しきい値設定 -->
@@ -133,15 +157,74 @@
 
     <script>
         // 初期値をサーバーから取得
+        let currentTemp = {{ latest_data.temperature|round(1) }};
+        let thresholdTemp = 25.0;
+        let heaterStatus = "unknown";
+
+        // Function to get the initial heater status
+        function getInitialHeaterStatus() {
+            fetch("/get_heater_status")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status) {
+                        heaterStatus = data.status === "on" ? "ON" : "OFF";
+                        updateHeaterStatusDisplay();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching heater status:", error);
+                    // Fallback to determining status from temperature
+                    updateHeaterStatusBasedOnTemp();
+                });
+        }
+
+        // Function to update heater status based on current temperature and threshold
+        function updateHeaterStatusBasedOnTemp() {
+            const oldStatus = heaterStatus;
+            
+            if (currentTemp < thresholdTemp - 0.25) {
+                heaterStatus = "ON";
+            } else if (currentTemp > thresholdTemp + 0.25) {
+                heaterStatus = "OFF";
+            }
+            
+            // Only update the display if status has changed or was unknown
+            if (oldStatus !== heaterStatus || oldStatus === "unknown") {
+                updateHeaterStatusDisplay();
+            }
+        }
+
+        // Function to update the heater status display
+        function updateHeaterStatusDisplay() {
+            const statusElement = document.getElementById("heater-status");
+            statusElement.textContent = heaterStatus;
+            
+            // Add color-coding
+            if (heaterStatus === "ON") {
+                statusElement.classList.remove("text-white", "text-gray-400");
+                statusElement.classList.add("text-red-400");
+            } else if (heaterStatus === "OFF") {
+                statusElement.classList.remove("text-white", "text-red-400");
+                statusElement.classList.add("text-gray-400");
+            } else {
+                statusElement.classList.remove("text-red-400", "text-gray-400");
+                statusElement.classList.add("text-white");
+            }
+        }
+
         fetch("/get_threshold")
             .then(response => response.json())
             .then(data => {
                 document.getElementById("tempSlider").value = data.threshold;
                 document.getElementById("currentValue").textContent = data.threshold;
+                thresholdTemp = parseFloat(data.threshold);
+                updateHeaterStatusBasedOnTemp();
             });
 
         document.getElementById("tempSlider").addEventListener("input", function () {
             document.getElementById("currentValue").textContent = this.value;
+            thresholdTemp = parseFloat(this.value);
+            updateHeaterStatusBasedOnTemp();
         });
 
         document.getElementById("saveThreshold").addEventListener("click", function() {
@@ -178,6 +261,10 @@
                     document.getElementById("humidity-value").textContent = data.humidity.toFixed(1) + "%";
                     document.getElementById("battery-value").textContent = data.battery + "%";
                     document.getElementById("last-update").textContent = new Date(data.timestamp).toLocaleString();
+                    
+                    // Update current temperature and check heater status
+                    currentTemp = data.temperature;
+                    updateHeaterStatusBasedOnTemp();
                 })
                 .catch(error => console.error("Error fetching sensor data:", error));
         }
@@ -186,7 +273,10 @@
         setInterval(updateSensorData, 30000);
         
         // ページ読み込み直後にも一度更新
-        document.addEventListener("DOMContentLoaded", updateSensorData);
+        document.addEventListener("DOMContentLoaded", function() {
+            updateSensorData();
+            getInitialHeaterStatus();
+        });
     </script>
 </body>
 

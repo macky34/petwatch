@@ -3,9 +3,11 @@ import json
 import sqlite3
 import pandas as pd
 import plotly.graph_objects as go
+from switchbot_api import SwitchBotAPI
 
 app = Flask(__name__)
 CONFIG_FILE = "config.json"
+switchbot_api = SwitchBotAPI()
 
 def init_db():
     """データベースの初期化（インデックス追加）"""
@@ -74,6 +76,15 @@ def latest_data_endpoint():
         return jsonify(latest_data)
     else:
         return jsonify({"error": "No data available"}), 404
+        
+@app.route("/get_heater_status")
+def get_heater_status():
+    """SwitchBot API から現在のヒーターの状態を取得する"""
+    status = switchbot_api.get_status()
+    if status and "body" in status and "power" in status["body"]:
+        return jsonify({"status": status["body"]["power"]})
+    else:
+        return jsonify({"error": "Failed to get heater status"}), 500
 
 @app.route("/")
 def index():
