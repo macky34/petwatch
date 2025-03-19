@@ -28,6 +28,11 @@
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
+        .animate-gradient-wave {
+            background-size: 200% 200%;
+            animation: gradient-wave 15s ease infinite;
+        }
     </style>
 </head>
 
@@ -40,7 +45,11 @@
                     Environment Dashboard
                 </span>
             </h1>
-            <div class="flex items-center space-x-4"></div>
+            <div class="flex items-center space-x-4">
+                <a href="/graph" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    View Graphs
+                </a>
+            </div>
         </div>
     </header>
 
@@ -60,7 +69,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-300">Temperature</p>
-                            <p class="text-2xl font-bold text-white">{{ latest_data.temperature|round(1) }}°C</p>
+                            <p class="text-2xl font-bold text-white" id="temperature-value">{{ latest_data.temperature|round(1) }}°C</p>
                         </div>
                     </div>
                 </div>
@@ -76,7 +85,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-300">Humidity</p>
-                            <p class="text-2xl font-bold text-white">{{ latest_data.humidity|round(1) }}%</p>
+                            <p class="text-2xl font-bold text-white" id="humidity-value">{{ latest_data.humidity|round(1) }}%</p>
                         </div>
                     </div>
                 </div>
@@ -95,38 +104,90 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-300">Battery</p>
-                            <p class="text-2xl font-bold text-white">{{ latest_data.battery }}%</p>
+                            <p class="text-2xl font-bold text-white" id="battery-value">{{ latest_data.battery }}%</p>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- 温度しきい値設定 -->
+            <div class="glass-effect p-6 rounded-2xl shadow-lg mt-6">
+                <h2 class="text-xl font-bold text-white mb-4">Temperature Threshold Control</h2>
+                <div class="flex flex-col space-y-4">
+                    <div class="flex items-center">
+                        <input type="range" id="tempSlider" min="15" max="35" step="0.5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" value="25">
+                    </div>
+                    <div class="flex justify-between">
+                        <p class="text-gray-300">Current Threshold: <span id="currentValue" class="font-bold text-white">25</span>°C</p>
+                        <button id="saveThreshold" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Save</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Last Update -->
+            <div class="text-center text-sm text-gray-400 mt-6">
+                Last updated: <span id="last-update">{{ latest_data.timestamp }}</span>
+            </div>
         </div>
-        <input type="range" id="tempSlider" min="15" max="35" step="1" value="25">
-        <p>Current Threshold: <span id="currentValue"></span>°C</p>
-        <button onclick="updateThreshold()">Save</button>
+    </main>
 
-        <script>
-            // 初期値をサーバーから取得
-            fetch("/get_threshold")
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("tempSlider").value = data.threshold;
-                    document.getElementById("currentValue").textContent = data.threshold;
-                });
-
-            document.getElementById("tempSlider").addEventListener("input", function () {
-                document.getElementById("currentValue").textContent = this.value;
+    <script>
+        // 初期値をサーバーから取得
+        fetch("/get_threshold")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("tempSlider").value = data.threshold;
+                document.getElementById("currentValue").textContent = data.threshold;
             });
 
-            function updateThreshold() {
-                fetch("/set_threshold", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ threshold: document.getElementById("tempSlider").value })
-                });
-            }
-        </script>
-    </main>
+        document.getElementById("tempSlider").addEventListener("input", function () {
+            document.getElementById("currentValue").textContent = this.value;
+        });
+
+        document.getElementById("saveThreshold").addEventListener("click", function() {
+            updateThreshold();
+        });
+
+        function updateThreshold() {
+            fetch("/set_threshold", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ threshold: document.getElementById("tempSlider").value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "ok") {
+                    // 設定成功時の視覚的フィードバック
+                    const button = document.getElementById("saveThreshold");
+                    button.classList.add("bg-green-600");
+                    button.textContent = "Saved!";
+                    setTimeout(() => {
+                        button.classList.remove("bg-green-600");
+                        button.textContent = "Save";
+                    }, 2000);
+                }
+            });
+        }
+
+        // センサーデータの定期的な更新
+        function updateSensorData() {
+            fetch("/get_latest_data")
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("temperature-value").textContent = data.temperature.toFixed(1) + "°C";
+                    document.getElementById("humidity-value").textContent = data.humidity.toFixed(1) + "%";
+                    document.getElementById("battery-value").textContent = data.battery + "%";
+                    document.getElementById("last-update").textContent = new Date(data.timestamp).toLocaleString();
+                })
+                .catch(error => console.error("Error fetching sensor data:", error));
+        }
+
+        // 30秒ごとにデータを更新
+        setInterval(updateSensorData, 30000);
+        
+        // ページ読み込み直後にも一度更新
+        document.addEventListener("DOMContentLoaded", updateSensorData);
+    </script>
 </body>
 
 </html>

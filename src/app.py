@@ -66,6 +66,15 @@ def set_threshold():
     save_threshold(float(data["threshold"]))
     return jsonify({"status": "ok"})
 
+@app.route("/get_latest_data")
+def latest_data_endpoint():
+    """最新のセンサーデータを JSON で返す API エンドポイント"""
+    latest_data = get_latest_data()
+    if latest_data:
+        return jsonify(latest_data)
+    else:
+        return jsonify({"error": "No data available"}), 404
+
 @app.route("/")
 def index():
     """ホームページ（最新データ表示）"""
