@@ -61,9 +61,9 @@ def control_heater(current_temp):
         with open(CONFIG_FILE, "w") as f:
             json.dump({"threshold_temperature": threshold}, f, indent=4)
     
-    if current_temp < threshold - 0.5:
+    if current_temp < threshold - 0.25:
         switchbot_api.turn_on()  # ON
-    elif current_temp > threshold + 0.5:
+    elif current_temp > threshold + 0.25:
         switchbot_api.turn_off()  # OFF
 
 async def scan_and_log():
