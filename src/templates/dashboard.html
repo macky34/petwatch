@@ -160,6 +160,8 @@
         let currentTemp = {{ latest_data.temperature|round(1) }};
         let thresholdTemp = 25.0;
         let heaterStatus = "unknown";
+        let tempSliderValue = 25.0;
+        let appliedThreshold = 25.0;
 
         // Function to get the initial heater status
         function getInitialHeaterStatus() {
@@ -182,9 +184,9 @@
         function updateHeaterStatusBasedOnTemp() {
             const oldStatus = heaterStatus;
             
-            if (currentTemp < thresholdTemp - 0.25) {
+            if (currentTemp < appliedThreshold - 0.25) {
                 heaterStatus = "ON";
-            } else if (currentTemp > thresholdTemp + 0.25) {
+            } else if (currentTemp > appliedThreshold + 0.25) {
                 heaterStatus = "OFF";
             }
             
@@ -217,14 +219,16 @@
             .then(data => {
                 document.getElementById("tempSlider").value = data.threshold;
                 document.getElementById("currentValue").textContent = data.threshold;
-                thresholdTemp = parseFloat(data.threshold);
+                tempSliderValue = parseFloat(data.threshold);
+                appliedThreshold = tempSliderValue;
+                thresholdTemp = appliedThreshold;
                 updateHeaterStatusBasedOnTemp();
             });
 
         document.getElementById("tempSlider").addEventListener("input", function () {
             document.getElementById("currentValue").textContent = this.value;
-            thresholdTemp = parseFloat(this.value);
-            updateHeaterStatusBasedOnTemp();
+            tempSliderValue = parseFloat(this.value);
+            // スライダー変更時は表示のみ更新し、ヒーターステータスは更新しない
         });
 
         document.getElementById("saveThreshold").addEventListener("click", function() {
@@ -235,7 +239,7 @@
             fetch("/set_threshold", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ threshold: document.getElementById("tempSlider").value })
+                body: JSON.stringify({ threshold: tempSliderValue })
             })
             .then(response => response.json())
             .then(data => {
@@ -248,6 +252,11 @@
                         button.classList.remove("bg-green-600");
                         button.textContent = "Save";
                     }, 2000);
+                    
+                    // 保存後、新しい閾値を適用してヒーターステータスを更新
+                    appliedThreshold = tempSliderValue;
+                    thresholdTemp = appliedThreshold;
+                    updateHeaterStatusBasedOnTemp();
                 }
             });
         }
